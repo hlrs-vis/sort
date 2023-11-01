@@ -119,6 +119,8 @@ class KalmanBoxTracker(object):
     self.hits = 0
     self.hit_streak = 0
     self.age = 0
+    self.class_counts = {}  # New attribute to track class counts
+    self.class_label = 0
 
   def update(self,bbox):
     """
@@ -129,6 +131,7 @@ class KalmanBoxTracker(object):
     self.hits += 1
     self.hit_streak += 1
     self.kf.update(convert_bbox_to_z(bbox))
+    self.class_label = int(bbox[5])
 
   def predict(self):
     """
@@ -234,6 +237,8 @@ class Sort(object):
     # update matched trackers with assigned detections
     for m in matched:
       self.trackers[m[1]].update(dets[m[0], :])
+      class_label = int(dets[m[0], 5])
+      #self.trackers[m[1]].class_counts[class_label] += 1
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
@@ -243,7 +248,7 @@ class Sort(object):
     for trk in reversed(self.trackers):
         d = trk.get_state()[0]
         if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
-          ret.append(np.concatenate((d,[trk.id+1])).reshape(1,-1)) # +1 as MOT benchmark requires positive
+          ret.append(np.concatenate((d,[trk.id+1],[trk.class_label])).reshape(1,-1)) # +1 as MOT benchmark requires positive
         i -= 1
         # remove dead tracklet
         if(trk.time_since_update > self.max_age):
